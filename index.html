@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>東証お気に入り銘柄 株価チャート配信</title>
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+  <!-- Supabase JS Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header / Navbar -->
+    <header class="app-header">
+      <div class="logo">
+        <i class="fa-solid fa-chart-line logo-icon"></i>
+        <h1>株価チャート配信</h1>
+      </div>
+      <div id="user-status-bar" class="user-status hidden">
+        <span id="user-email-display" class="user-email"></span>
+        <button id="btn-logout" class="btn-icon" title="ログアウト">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Supabase Configuration Warning Banner -->
+    <div id="config-banner" class="banner hidden">
+      <div class="banner-content">
+        <i class="fa-solid fa-gear"></i>
+        <span>Supabaseの接続設定が必要です。</span>
+        <button id="btn-open-config-modal" class="btn-sm">設定を開く</button>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Auth Section (Login / Signup) -->
+      <section id="auth-section" class="card auth-card">
+        <h2 id="auth-title">ログイン</h2>
+        <p class="auth-desc">お気に入り銘柄（最大30件）を登録すると、取引日の17時（日足）と土曜日（週足）にメールでチャートをお届けします。</p>
+
+        <form id="auth-form" class="form">
+          <div class="form-group">
+            <label for="input-email"><i class="fa-solid fa-envelope"></i> メールアドレス</label>
+            <input type="email" id="input-email" placeholder="example@domain.com" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="input-password"><i class="fa-solid fa-lock"></i> パスワード</label>
+            <input type="password" id="input-password" placeholder="••••••••" required autocomplete="current-password" />
+          </div>
+          <div id="auth-error-msg" class="error-msg hidden"></div>
+
+          <button type="submit" id="btn-auth-submit" class="btn btn-primary">
+            <span id="auth-btn-text">ログイン</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <div class="auth-toggle">
+          <span id="auth-toggle-text">アカウントをお持ちでないですか？</span>
+          <button id="btn-toggle-auth" class="btn-text">新規登録</button>
+        </div>
+      </section>
+
+      <!-- Dashboard Section (Logged In View) -->
+      <section id="dashboard-section" class="dashboard hidden">
+        <!-- Stock Registration Panel -->
+        <div class="card add-stock-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-plus-circle"></i> 銘柄の追加</h3>
+            <div class="stock-counter">
+              <span id="favorites-count">0</span> / <span class="max-limit">30</span> 銘柄
+            </div>
+          </div>
+          <form id="add-stock-form" class="add-stock-form">
+            <div class="input-with-button">
+              <input type="text" id="input-ticker" placeholder="銘柄コード (例: 7203)" maxlength="6" required pattern="^[0-9]{4}(\.T)?$" title="半角数字4桁の東証銘柄コードを入力してください" />
+              <button type="submit" id="btn-add-stock" class="btn btn-accent">
+                <i class="fa-solid fa-plus"></i> 追加
+              </button>
+            </div>
+            <p class="input-hint">※ 東証上場銘柄の4桁コード（例: 7203 トヨタ, 6758 ソニー）を入力してください。</p>
+          </form>
+        </div>
+
+        <!-- Favorites List Panel -->
+        <div class="card favorites-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-star text-warning"></i> 登録済みのお気に入り銘柄</h3>
+          </div>
+          <div id="favorites-loading" class="loading-spinner hidden">
+            <i class="fa-solid fa-circle-notch fa-spin"></i> 読み込み中...
+          </div>
+          <div id="empty-state" class="empty-state">
+            <i class="fa-solid fa-folder-open empty-icon"></i>
+            <p>お気に入り銘柄がまだ登録されていません。</p>
+            <span class="sub-text">上のフォームから東証銘柄コードを追加してください。</span>
+          </div>
+          <ul id="favorites-list" class="favorites-list"></ul>
+        </div>
+
+        <!-- Schedule Information Card -->
+        <div class="card info-card">
+          <h4><i class="fa-solid fa-clock-rotate-left"></i> メール自動配信スケジュール</h4>
+          <ul class="schedule-info-list">
+            <li>
+              <span class="badge badge-daily">日足チャート</span>
+              <span>東証取引がある日の <strong>17:00頃</strong> に送信</span>
+            </li>
+            <li>
+              <span class="badge badge-weekly">週足チャート</span>
+              <span>毎週 <strong>土曜日 09:00頃</strong> に送信</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <!-- Supabase Config Modal -->
+    <div id="config-modal" class="modal hidden">
+      <div class="modal-content card">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-sliders"></i> Supabase接続設定</h3>
+          <button id="btn-close-config-modal" class="btn-icon"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <p class="modal-desc">SupabaseプロジェクトのURLとanonKeyを入力してください。設定はブラウザに安全に保存されます。</p>
+        <form id="config-form" class="form">
+          <div class="form-group">
+            <label for="cfg-supabase-url">Supabase URL</label>
+            <input type="url" id="cfg-supabase-url" placeholder="https://xyzcompany.supabase.co" required />
+          </div>
+          <div class="form-group">
+            <label for="cfg-supabase-key">Supabase anon Key</label>
+            <input type="password" id="cfg-supabase-key" placeholder="eyJhbGciOi..." required />
+          </div>
+          <button type="submit" class="btn btn-primary">設定を保存する</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
