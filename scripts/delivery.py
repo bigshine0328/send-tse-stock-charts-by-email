@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 import pandas as pd
 import requests
+import yfinance as yf  # 株価データ取得ライブラリ
 from supabase import create_client, Client
 
 # JST (日本標準時) タイムゾーンの定義
