@@ -116,7 +116,7 @@ def generate_chart_image(ticker_code: str, stock_name: str, delivery_type: str):
         ticker = yf.Ticker(yf_symbol)
         if delivery_type == "daily":
             # 直近50営業日程度
-            df = ticker.history(period="4m", interval="1d")
+            df = ticker.history(period="3mo", interval="1d")
             df = df.tail(50)
             mav_tuple = (5, 25, 75)
             chart_title = f"{stock_name} ({clean_code}) 日足 50営業日"
